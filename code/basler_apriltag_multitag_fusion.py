@@ -12,9 +12,9 @@
 #    (noisy). For final RMS, compute the velocity OFFLINE with a
 #    Savitzky-Golay derivative on fused_yaw_deg vs wall_time_ms.
 # 5. Timestamps are taken at frame GRAB (good), but on the PC clock.
-#    The encoder uses its own micros() clock. Align the two using the
-#    LED flash: find the 'frame_brightness' spike here and match it to
-#    the encoder's "# SYNC time_us=..." line.
+#    The encoder uses its own micros() clock. The reported study used
+#    motion-onset alignment plus offline offset refinement; no LED
+#    synchronization was used. 'frame_brightness' is diagnostic only.
 # 6. Video FPS is now the REAL measured capture rate (auto), or a fixed
 #    value if you set OUTPUT_FPS. It is NOT the camera's max frame rate.
 #    This makes saved-video playback duration match the recording.
@@ -57,7 +57,7 @@ print(f"Filter enabled: {USE_FILTER}")
 SAVE_VIDEO      = True      # write annotated processed video to disk
 DRAW_OVERLAYS   = True      # green tag outlines + HUD text
 DRAW_TAG_IDS    = False     # external "ID: n" label next to each tag (off by default)
-LOG_BRIGHTNESS  = True      # log frame mean brightness (for LED sync flash detection)
+LOG_BRIGHTNESS  = True      # optional diagnostic logging; not used for paper synchronization
 
 # Video frame rate:
 #   OUTPUT_FPS = None  -> auto-measure the REAL capture rate over a short warm-up

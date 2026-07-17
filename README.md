@@ -10,7 +10,9 @@ This is the documentation and acquisition-code repository prepared for the confe
 
 - The reported study used **motion-onset synchronization**, not an LED.
 - The unavailable exploratory offline-analysis script is not included.
-- The exact filtering equations, parameters, synchronization procedure, and manuscript result tables are documented below.
+- The filtering equations, synchronization procedure, and manuscript result tables are documented below.
+- All 30 camera logs have `filter_enabled = 1`; therefore the first-order online IIR/LPF (`alpha = 0.20`) was enabled during acquisition.
+- The reported offline yaw-rate estimation then used a second-order Savitzky-Golay differentiator with a window of approximately 0.3 s. Thus the camera data passed through two temporal processing stages.
 - The raw 30-run dataset should be archived separately after submission.
 
 ## Repository structure
@@ -136,7 +138,7 @@ Run:
 python3 code/basler_apriltag_multitag_fusion.py
 ```
 
-The online finite-difference rate is a status display only. Final paper rates were calculated offline.
+The online finite-difference rate is a status display only. In the reported 30 runs, the optional first-order IIR/LPF was enabled (`filter_enabled = 1`). Final paper rates were subsequently calculated offline with a Savitzky-Golay differentiator.
 
 ## 6. Record each run
 
@@ -204,9 +206,23 @@ y_k=0.20x_k+0.80y_{k-1}
 
 This filter is optional and intended for online display.
 
-## Offline yaw-rate filter
+## Filters actually used
 
-The final rate estimate used a second-order Savitzky–Golay differentiator with a window of approximately 0.3 s. The same differentiation operator was applied to camera yaw and encoder angle to provide a common effective bandwidth.
+### Stage 1 — Online first-order IIR low-pass filter
+
+During all 30 reported acquisitions, the saved fused camera yaw was filtered by:
+
+```math
+y_k=0.20x_k+0.80y_{k-1}
+```
+
+where `x_k` is the current fused yaw and `y_k` is the saved filtered yaw.
+
+### Stage 2 — Offline Savitzky-Golay differentiator
+
+The final rate estimate used a second-order Savitzky-Golay differentiator with a window of approximately 0.3 s. The same Savitzky-Golay differentiation operator was applied to camera yaw and encoder angle. Note that the camera yaw had already passed through the online IIR/LPF during acquisition.
+
+Median tag rejection is a robust fusion rule, not a temporal filter.
 
 ## Synchronization
 
