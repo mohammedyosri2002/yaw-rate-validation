@@ -1,9 +1,0 @@
-cff-version: 1.2.0
-message: "If you use this repository, please cite the associated conference paper."
-title: "Camera-Based Yaw-Rate Validation on a Single-Axis Testbed"
-type: software
-authors:
-  - family-names: "Yousry"
-    given-names: "Mohamed"
-year: 2026
-license: MIT
