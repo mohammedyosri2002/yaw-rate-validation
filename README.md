@@ -6,15 +6,14 @@ This repository documents the experimental procedure, camera calibration, AprilT
 
 ## Important scope
 
-This repository contains the documentation and acquisition code prepared for the conference submission.
+This camera-ready release contains the acquisition code, calibration assets, the **30 archived experimental runs**, and the offline re-analysis used to answer the software-synchronization circularity question raised during review.
 
-- The reported study used **motion-onset software synchronization**; no LED synchronization was used.
-- The original exploratory offline-analysis script is not included in this release.
-- The final processing equations, settings, synchronization procedure, and manuscript result tables are documented in this repository.
-- All 30 camera logs have `filter_enabled = 1`; therefore, the first-order online IIR low-pass filter with `alpha = 0.20` was enabled during acquisition.
-- The reported offline yaw-rate estimation then used a second-order Savitzky-Golay differentiator with a window of approximately `0.3 s`.
-- Therefore, the camera yaw passed through two temporal-processing stages: the acquisition-stage IIR filter and the offline Savitzky-Golay differentiator.
-- The raw 30-run dataset should be archived separately after submission.
+- Ten setpoints (`30` to `300 deg/s`) were tested, with three valid runs per setpoint: **30 runs total**.
+- The reported study used software synchronization; no hardware trigger or LED synchronization was used.
+- All 30 camera logs have `filter_enabled = 1`, so the acquisition-stage first-order IIR filter (`alpha = 0.20`) was active.
+- The accepted paper's absolute result tables remain the headline results. The new `analysis/reanalysis.py` implements a **paired sensitivity re-analysis**: the same reconstructed chain is applied to all alignment strategies, and only within-run differences are used to quantify sensitivity to the alignment procedure.
+- The reconstructed chain uses a 100 Hz common grid and a second-order Savitzky-Golay derivative with a 31-sample (0.31 s) window, consistent with the paper's documented "approximately 0.3 s" setting. Some exact historical offline implementation choices were not archived, so the rebuilt absolute RMS values are **not used to replace the accepted tables**.
+- ESAT ADCS timing is treated as independent/uncertain. The raw ESAT timestamps resemble epoch time, but the archive does not establish where they are generated. No common-clock claim is made.
 
 ## Repository structure
 
@@ -41,11 +40,26 @@ docs/figures/
 results/
   paper_results.csv
   paper_results.md
+  reanalysis/
+    table_A_B_per_run.csv
+    per_run_derived.csv
+    sweeps.json
+    imu_lag.csv
+    imu_aligned.csv
+
+analysis/
+  reanalysis.py
+  imu_analysis.py
+  run_all.py
+  README.md
+
+data/raw_runs/
+  first_test_30deg-s/ ... third_test_300deg-s/
 ```
 
 ## Hardware
 
-- Basler monochrome camera with an 8 mm lens.
+- Basler ace acA1920-40um monochrome camera with an 8 mm lens.
 - Mono8 image acquisition.
 - Fixed exposure: `5 ms`.
 - Gain: `0 dB`.
@@ -55,10 +69,8 @@ results/
 - Magnetic quadrature encoder: `1496` decoded counts/revolution.
 - Encoder logging rate: `100 Hz`.
 - Arduino controller.
-- Calibrated six-axis IMU integrated into the Theia Space Educational Satellite (ESAT) ADCS board.
-- The approximately `1 Hz` IMU update rate used in this experiment was imposed by the telemetry logging path, not by the internal IMU bandwidth.
-
-Add the exact camera, Arduino, motor, and IMU model numbers before making the repository public, when those model numbers are available.
+- Theia Space ESAT ADCS gyroscope-derived rotational-speed output as the supporting inertial reference. The ADCS integrates a six-axis accelerometer/gyroscope IMU plus a three-axis magnetometer; the manufacturer specifies gyroscope rotational-speed accuracy of `1 deg/s`.
+- The approximately `1 Hz` value in this dataset is the ESAT telemetry logging rate used in the experiment, not the gyroscope bandwidth.
 
 # Experimental procedure
 
@@ -247,7 +259,7 @@ Median tag rejection is a robust spatial-fusion rule, not a temporal filter.
 
 No LED was used.
 
-The camera, encoder, and IMU operated on independent clocks and were synchronized in software after acquisition:
+The camera and encoder were synchronized in software after acquisition. The ESAT rate telemetry was aligned separately to the encoder; its timestamp origin is not established by the archive:
 
 1. Compute preliminary camera, encoder, and IMU rate signals.
 2. Detect the rest-to-motion onset in each stream.
@@ -273,7 +285,7 @@ where:
 - `ω_enc` is the encoder-derived yaw rate;
 - `t_k` is the `k`th encoder timestamp.
 
-The IMU is aligned to the encoder using the same principle.
+The ESAT rotational-speed telemetry is aligned to the encoder using the same onset-seed plus least-squares principle. The sparse ESAT stream is never upsampled in `analysis/imu_analysis.py`; camera and encoder rates are evaluated only at actual ESAT sample instants.
 
 The synchronization window and evaluation window are different:
 
@@ -327,13 +339,31 @@ Main interpretation:
 - Encoder–IMU agreement remains approximately flat, ranging from about `1.3` to `2.0 deg/s`, with no systematic dependence on speed.
 - Camera–Encoder correlation is `0.99` or higher across all tested setpoints.
 - Camera–Encoder bias magnitude remains below `0.6 deg/s`.
-- The camera-side increase is consistent with motion blur during the fixed `5 ms` exposure.
+- The camera-side increase is consistent with camera-side acquisition effects. With fixed `5 ms` exposure and host-side camera timestamps, the present dataset does not separate motion blur from residual frame-timestamp effects.
 
 The camera encoder-independent rate-variation estimate used in the manuscript is a diagnostic based on the difference between lighter and heavier yaw-rate derivative estimates. It should be interpreted as a camera-side rate-variation proxy rather than as a direct measurement of fundamental sensor noise.
 
+# Reproducing the camera-ready re-analysis
+
+Create a Python environment and install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Then run:
+
+```bash
+python analysis/run_all.py
+```
+
+The scripts read the 30 folders under `data/raw_runs/` and rewrite the files under `results/reanalysis/`. The key camera-encoder sensitivity outputs are `table_A_B_per_run.csv`, `per_run_derived.csv`, and `sweeps.json`; the supporting ESAT checks are `imu_lag.csv` and `imu_aligned.csv`.
+
+The camera-ready alignment result is a paired comparison, not a replacement for the accepted absolute result tables. Holding the constant-speed plateau out of the offset fit changes plateau RMS by about `+0.005 deg/s` on average and by at most about `0.031 deg/s` in any run; the largest relative change is about `3.07%` and occurs in a different low-rate run.
+
 # Data and code availability statement
 
-> The camera-calibration code, AprilTag multi-marker fusion code, encoder logger, experimental targets, calibration parameters, acquisition settings, processing equations, synchronization method, and reported result tables are available in this repository. The study used motion-onset software synchronization; no LED synchronization was used.
+> The camera-calibration script, AprilTag multi-marker fusion and acquisition script, encoder logger firmware, printable calibration and tag targets, recovered intrinsics, raw per-run camera, encoder and ESAT logs for all thirty runs, offline alignment-sensitivity analysis, and result tables are available in this repository.
 
 # Files not to publish
 
@@ -349,4 +379,4 @@ Do not upload:
 
 # Citation
 
-Add the final conference citation and DOI after acceptance.
+This repository accompanies ASET/STAE 2026 paper #416. Add the final proceedings citation and DOI when assigned.
